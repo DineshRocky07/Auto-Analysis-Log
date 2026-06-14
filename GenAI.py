@@ -60,48 +60,57 @@ if uploaded_file is not None:
 
     if len(st.session_state["suggestions"]) >0:
                   st.write("Ai charts charts [click to select one]:")
+                  st.write("Tick the boxes for the charts you want, then click Generate!")
 
-                  #loop 
+                  #create a emptycard
+                  selected_ideas = []
+
+                  #loop Draw a tick box 
                   for idea in st.session_state["suggestions"]:
-                          
+                      is_ticked =st.checkbox(idea)
+                      if is_ticked:
+                           selected_ideas.append(idea)
+
+                  if len(selected_ideas) >0:
                       #draw a button for each idea
-                      if st.button(idea):
-                            custom_prompt = f"""
-                                You are an expert Python data analyst. I have a pandas DataFrame named 'df' with columns: {', '.join(coloum)}.
-                                Write Python code using `plotly.express` as `px` to create this specific chart: {idea}.
-                                Assign the resulting plotly figure to a variable named `fig`.
-                                Return ONLY the raw python code. Do not include markdown.
-                                """
-                
-                             # 4. The Chef cooks the specific chart
-                            with st.spinner(f"AI is cooking the {idea}..."):
-                                try:
-                                    response =client.models.generate_content(
-                                        model="gemini-3.5-flash",
-                                        contents=custom_prompt
-                                    )
-                                    generated_code = response.text.strip()
-                                    #when ai create markdown format code so use this remove that
-                                    if generated_code.startswith("```python"):
-                                            generated_code = generated_code[9:-3].strip()
+                      if st.button("Generate Selected Charts"):
+                            for idea in selected_ideas:
+                                custom_prompt = f"""
+                                    You are an expert Python data analyst. I have a pandas DataFrame named 'df' with columns: {', '.join(coloum)}.
+                                    Write Python code using `plotly.express` as `px` to create this specific chart: {idea}.
+                                    Assign the resulting plotly figure to a variable named `fig`.
+                                    Return ONLY the raw python code. Do not include markdown.
+                                    """
+                    
+                                # 4. The Chef cooks the specific chart
+                                with st.spinner(f"AI is cooking the {idea}..."):
+                                    try:
+                                        response =client.models.generate_content(
+                                            model="gemini-3.5-flash",
+                                            contents=custom_prompt
+                                        )
+                                        generated_code = response.text.strip()
+                                        #when ai create markdown format code so use this remove that
+                                        if generated_code.startswith("```python"):
+                                                generated_code = generated_code[9:-3].strip()
+                                        
+                                        # genarated dashbaod chart
+                                        st.subheader("Generated Chart:")
+
+                                        #needfull recomendation for genarated chat
+
+                                        local_vars = {"df":df, "px": px}
+                                        #exec => ececute , globals => global variable, local_vars => local variable 
+                                        exec(generated_code, globals(), local_vars)
+
+                                        if "fig" in local_vars:
+                                            st.plotly_chart(local_vars["fig"], use_container_width=True)
+                                                                        
+
+                                        with st.expander("Show the generated code"):
+                                            st.code(generated_code, language="python")
+                                        #time.sleep(4)
+
+                                    except Exception as e:
+                                            st.error(f"Error generating code: {e}")
                                     
-                                    # genarated dashbaod chart
-                                    st.subheader("Generated Chart:")
-
-                                    #needfull recomendation for genarated chat
-
-                                    local_vars = {"df":df, "px": px}
-                                    #exec => ececute , globals => global variable, local_vars => local variable 
-                                    exec(generated_code, globals(), local_vars)
-
-                                    if "fig" in local_vars:
-                                        st.plotly_chart(local_vars["fig"], use_container_width=True)
-                                                                      
-
-                                    with st.expander("Show the generated code"):
-                                        st.code(generated_code, language="python")
-                                    
-
-                                except Exception as e:
-                                        st.error(f"Error generating code: {e}")
-                                
